@@ -70,7 +70,7 @@ export function runInCircles() {
 
       const actor = actors[index];
 
-      actor.position = Vector.clone(body.position);
+      actor.position = { x: body.position.x, y: body.position.y / 2 };
 
       lastTime = time;
     });
