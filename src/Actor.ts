@@ -1,30 +1,51 @@
 import { spriteSheet } from "./spriteSheet";
-import { Animation, idleAnimation, runningAnimation, walkingAnimation } from "./Animation";
+import {
+  Animation,
+  getAnimationVelocity,
+  idleAnimation,
+  runningAnimation,
+  walkingAnimation,
+} from "./Animation";
 import { Vector } from "matter-js";
 
 export class Actor {
   #position: Vector = { x: 0, y: 0 };
-  draggingPosition: Vector = { x: 0, y: 0 };
-  draggingPositionTimestamp = performance.now();
-  animationTime = 0;
-  direction = 0;
-  animation: Animation = runningAnimation;
+  lifetime = 0;
 
-  update(time: number) {
-    this.animationTime += time;
+  draggingPosition: Vector = { x: 0, y: 0 };
+  draggingPositionTimestamp = 0;
+
+  direction = 0;
+
+  animation: Animation = runningAnimation;
+  currentFrameTimestamp = 0;
+  currentFrame = 0;
+
+  renderedFrame = {
+    frame: 0,
+    position: { x: 0, y: 0 },
+  };
+
+  update(dt: number) {
+    this.lifetime += dt;
   }
 
-  draw(time: number, ctx: CanvasRenderingContext2D) {
-    const frame = this.getFrame(time);
+  draw(ctx: CanvasRenderingContext2D) {
+    const frame = this.getFrame();
+
+    if (frame !== this.renderedFrame.frame) {
+      this.renderedFrame.frame = frame;
+      this.renderedFrame.position = this.#position;
+    }
 
     ctx.drawImage(
       spriteSheet,
-      this.animation.x + this.animation.width * frame,
+      this.animation.x + this.animation.width * this.renderedFrame.frame,
       this.animation.y + this.animation.height * this.direction,
       this.animation.width,
       this.animation.height,
-      this.#position.x,
-      this.#position.y,
+      this.renderedFrame.position.x,
+      this.renderedFrame.position.y,
       this.animation.width,
       this.animation.height
     );
@@ -35,35 +56,43 @@ export class Actor {
 
     const draggingDiff = Vector.sub(position, this.draggingPosition);
     const timeSinceDraggingUpdate =
-      performance.now() - this.draggingPositionTimestamp;
+      this.lifetime - this.draggingPositionTimestamp;
 
-    if (Vector.magnitude(draggingDiff) > 5 || timeSinceDraggingUpdate > 500) {
-      this.direction = angleToDirection(
-        Math.atan2(draggingDiff.y, draggingDiff.x)
-      );
+    this.direction = angleToDirection(
+      Math.atan2(draggingDiff.y, draggingDiff.x)
+    );
 
-      const velocity =
-        (Vector.magnitude(draggingDiff) / timeSinceDraggingUpdate) * 1000;
+    const velocity = Vector.magnitude(draggingDiff) / timeSinceDraggingUpdate;
 
+    if (Vector.magnitude(draggingDiff) > 5 || timeSinceDraggingUpdate > 0.5) {
       if (velocity < 5) {
-        this.animation = idleAnimation;
+        this.setAnimation(idleAnimation);
       } else if (velocity < 100) {
-        this.animation = walkingAnimation;
+        this.setAnimation(walkingAnimation);
       } else {
-        this.animation = runningAnimation;
+        this.setAnimation(runningAnimation);
       }
 
       this.draggingPosition = position;
-      this.draggingPositionTimestamp = performance.now();
+      this.draggingPositionTimestamp = this.lifetime;
     }
+
+    this.updateFrame(velocity);
+  }
+
+  setAnimation(animation: Animation) {
+    if (this.animation === animation) return;
+
+    this.animation = animation;
+    this.currentFrameTimestamp = this.lifetime;
   }
 
   get position() {
     return this.#position;
   }
 
-  drawFrameNumber(time: number, ctx: CanvasRenderingContext2D) {
-    const frame = this.getFrame(time);
+  drawFrameNumber(ctx: CanvasRenderingContext2D) {
+    const frame = this.getFrame();
 
     ctx.font = "30px Arial";
     ctx.fillStyle = "red";
@@ -74,22 +103,24 @@ export class Actor {
     );
   }
 
-  getFrame(time: number) {
-    return globalFrame > 0
-      ? globalFrame % this.animation.frames
-      : Math.floor(time / this.animation.frameDuration) % this.animation.frames;
+  getFrame() {
+    return this.currentFrame % this.animation.frames;
+  }
+
+  private updateFrame(velocity: number) {
+    const animationVelocity = getAnimationVelocity(this.animation);
+
+    const animationSpeed =
+      animationVelocity === 0 ? 1 : velocity / animationVelocity;
+
+    const frameDuration = this.animation.frameDuration / animationSpeed;
+
+    if (this.lifetime - this.currentFrameTimestamp > frameDuration) {
+      this.currentFrameTimestamp = this.lifetime;
+      this.currentFrame++;
+    }
   }
 }
-
-let globalFrame = 0;
-
-window.addEventListener("keydown", (event) => {
-  if (event.code === "ArrowUp") {
-    globalFrame++;
-  } else if (event.code === "ArrowDown") {
-    globalFrame--;
-  }
-});
 
 function angleToDirection(angle: number) {
   angle += Math.PI / 2;

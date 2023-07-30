@@ -14,7 +14,7 @@ export const runningAnimation: Animation = {
   width: 63,
   height: 73,
   frames: 10,
-  frameDuration: 90,
+  frameDuration: 0.09,
   distanceOverFrame: 13,
 };
 
@@ -24,7 +24,7 @@ export const walkingAnimation: Animation = {
   width: 44,
   height: 68,
   frames: 8,
-  frameDuration: 90,
+  frameDuration: 0.09,
   distanceOverFrame: 7,
 };
 
@@ -34,6 +34,10 @@ export const idleAnimation: Animation = {
   width: 432 / 12,
   height: 420 / 6,
   frames: 12,
-  frameDuration: 90,
+  frameDuration: 0.09,
   distanceOverFrame: 0,
 };
+
+export function getAnimationVelocity(animation: Animation) {
+  return animation.distanceOverFrame / animation.frameDuration;
+}

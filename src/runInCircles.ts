@@ -42,7 +42,7 @@ export function runInCircles() {
   let lastTime = performance.now();
 
   function animate(time: number) {
-    const dt = (time - lastTime) / 1000;
+    const dt = (time - lastTime) /1000;
 
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
@@ -70,6 +70,8 @@ export function runInCircles() {
 
       const actor = actors[index];
 
+      actor.update(dt);
+
       actor.position = { x: body.position.x, y: body.position.y / 2 };
 
       lastTime = time;
@@ -78,7 +80,7 @@ export function runInCircles() {
     [...actors]
       .sort((a, b) => a.position.y - b.position.y)
       .forEach((actor) => {
-        actor.draw(time, ctx);
+        actor.draw(ctx);
       });
 
     Engine.update(engine, dt);
